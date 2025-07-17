@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secure Two-Person Chat</title>
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    #login, #chat-container {
+      max-width: 600px;
+      margin: auto;
+      width: 100%;
+      padding: 20px;
+    }
+
+    #login {
+      text-align: center;
+      margin-top: 80px;
+    }
+
+    #login input, #login button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      font-size: 16px;
+    }
+
+    #chat-container {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    #messages {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 15px;
+      background: white;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+    }
+
+    .message {
+      padding: 10px 15px;
+      margin: 10px 0;
+      border-radius: 20px;
+      max-width: 70%;
+      clear: both;
+      word-wrap: break-word;
+    }
+
+    .sent {
+      background: #dcf8c6;
+      float: right;
+      text-align: right;
+    }
+
+    .received {
+      background: #e5e5ea;
+      float: left;
+      text-align: left;
+    }
+
+    #form {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    #input {
+      flex-grow: 1;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    @media (max-width: 600px) {
+      #messages { padding: 10px; }
+      .message { max-width: 90%; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="login">
+  <h2>🔒 Enter Chat</h2>
+  <input type="password" id="password" placeholder="Password" />
+  <input type="text" id="username" placeholder="Your name" />
+  <button onclick="joinChat()">Join Chat</button>
+  <p id="error" style="color: red;"></p>
+</div>
+
+<div id="chat-container">
+  <h2>💬 Two-Person Chat</h2>
+  <div id="messages"></div>
+  <form id="form">
+    <input id="input" autocomplete="off" placeholder="Type your message..." />
+    <button type="submit">Send</button>
+  </form>
+</div>
+
+<script>
+  const socket = io();
+  let username = '';
+
+  async function joinChat() {
+    const password = document.getElementById('password').value.trim();
+    username = document.getElementById('username').value.trim();
+
+    const res = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    if (res.ok) {
+      document.getElementById('login').style.display = "none";
+      document.getElementById('chat-container').style.display = "flex";
+    } else {
+      document.getElementById('error').textContent = "❌ Invalid password or username.";
+    }
+  }
+
+  const form = document.getElementById('form');
+  const input = document.getElementById('input');
+  const messages = document.getElementById('messages');
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const msg = input.value.trim();
+    if (msg) {
+      socket.send({ user: username, message: msg });
+      input.value = '';
+    }
+  });
+
+  socket.on('message', function (data) {
+    const div = document.createElement('div');
+    const isOwn = data.user === username;
+    div.className = `message ${isOwn ? 'sent' : 'received'}`;
+    div.textContent = `${isOwn ? "You" : data.user}: ${data.message}`;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+  });
+</script>
+
+</body>
+</html>
